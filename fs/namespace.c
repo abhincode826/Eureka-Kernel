@@ -4167,6 +4167,3 @@ const struct proc_ns_operations mntns_operations = {
 	.owner		= mntns_owner,
 };
 
-EXPORT_SYMBOL(path_umount);
-
-EXPORT_SYMBOL(path_mount);
