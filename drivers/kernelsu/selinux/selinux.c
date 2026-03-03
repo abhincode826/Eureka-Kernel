@@ -30,7 +30,7 @@ static int transive_to_domain(const char *domain, struct cred *cred)
     u32 sid;
     int error;
 
-    tsec = selinux_cred(cred);
+    tsec = ((struct task_security_struct *)(cred)->security);
     if (!tsec) {
         pr_err("tsec == NULL!\n");
         return -1;
@@ -92,7 +92,7 @@ void setenforce(bool enforce)
 {
 #ifdef CONFIG_SECURITY_SELINUX_DEVELOP
 #ifdef KSU_COMPAT_USE_SELINUX_STATE
-	selinux_state.enforcing = enforce;
+	ksu_set_selinux_enforcing(enforce);
 #else
 	selinux_enforcing = enforce;
 #endif
@@ -115,7 +115,7 @@ bool getenforce(void)
 
 #ifdef CONFIG_SECURITY_SELINUX_DEVELOP
 #ifdef KSU_COMPAT_USE_SELINUX_STATE
-	return selinux_state.enforcing;
+	return ksu_selinux_enforcing();
 #else
 	return selinux_enforcing;
 #endif
@@ -201,9 +201,9 @@ static bool is_sid_match(const struct cred *cred, u32 cached_sid,
         return false;
     }
 #if LINUX_VERSION_CODE < KERNEL_VERSION(6, 18, 0)
-    const struct task_security_struct *tsec = selinux_cred(cred);
+    const struct task_security_struct *tsec = ((struct task_security_struct *)(cred)->security);
 #else
-    const struct cred_security_struct *tsec = selinux_cred(cred);
+    const struct cred_security_struct *tsec = ((struct task_security_struct *)(cred)->security);
 #endif
     if (!tsec) {
         return false;
