@@ -1,150 +1,144 @@
 // SPDX-License-Identifier: GPL-2.0
+/*
+ * pkg_observer.c — KernelSU-Next package observer (kernel 4.4, inotify-based)
+ *
+ * Watches /data/system/packages.list via fsnotify so the kernel is notified
+ * immediately when Android's package manager updates it (install/uninstall/
+ * update). On change, we signal ksud to refresh its UID allow-list.
+ *
+ * Uses only standard kernel 4.4 APIs — no extra patches needed.
+ */
+
+#include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/fs.h>
-#include <linux/namei.h>
+#include <linux/fsnotify.h>
 #include <linux/fsnotify_backend.h>
+#include <linux/namei.h>
+#include <linux/dcache.h>
 #include <linux/slab.h>
-#include <linux/rculist.h>
-#include <linux/version.h>
-#include "klog.h" // IWYU pragma: keep
-#include "throne_tracker.h"
+#include <linux/workqueue.h>
+#include <linux/string.h>
+#include "ksu.h"
 
-#define MASK_SYSTEM (FS_CREATE | FS_MOVE | FS_EVENT_ON_CHILD)
+#define PKG_LIST_PATH   "/data/system/packages.list"
+#define OBSERVER_DELAY  (HZ / 2)   /* debounce: wait 500ms before refresh */
 
-struct watch_dir {
-	const char *path;
-	u32 mask;
-	struct path kpath;
-	struct inode *inode;
-	struct fsnotify_mark *mark;
-};
+/* ── fsnotify group ─────────────────────────────────────────────────────── */
+static struct fsnotify_group *ksu_pkg_group;
 
-static struct fsnotify_group *g;
+/* ── debounce workqueue ─────────────────────────────────────────────────── */
+static struct delayed_work ksu_pkg_work;
 
-#include "pkg_observer_defs.h" // KSU_DECL_FSNOTIFY_OPS
-static KSU_DECL_FSNOTIFY_OPS(ksu_handle_inode_event)
+static void ksu_pkg_refresh_work(struct work_struct *work)
 {
-	if (!file_name)
+	pr_info("kernelsu: pkg_observer: packages.list changed, refreshing UIDs\n");
+	ksu_refresh_allow_list();
+}
+
+/* ── fsnotify event handler ─────────────────────────────────────────────── */
+static int ksu_pkg_handle_event(struct fsnotify_group *group,
+				struct inode *inode,
+				struct fsnotify_mark *inode_mark,
+				struct fsnotify_mark *vfsmount_mark,
+				u32 mask,
+				void *data,
+				int data_type,
+				const unsigned char *file_name,
+				u32 cookie)
+{
+	/* Only care about close-write and moved-to events —
+	 * package manager writes packages.list atomically via rename */
+	if (!(mask & (FS_CLOSE_WRITE | FS_MOVED_TO | FS_MODIFY)))
 		return 0;
-	if (mask & FS_ISDIR)
-		return 0;
-	if (ksu_fname_len(file_name) == 13 &&
-	    !memcmp(ksu_fname_arg(file_name), "packages.list", 13)) {
-		pr_info("packages.list detected: %d\n", mask);
-		track_throne(false);
-	}
+
+	/* Debounce: cancel any pending work and reschedule */
+	mod_delayed_work(system_wq, &ksu_pkg_work, OBSERVER_DELAY);
 	return 0;
 }
 
-static const struct fsnotify_ops ksu_ops = {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 9, 0)
-	.handle_inode_event = ksu_handle_inode_event,
-#else
-	.handle_event = ksu_handle_inode_event,
-#endif
+static void ksu_pkg_free_group_priv(struct fsnotify_group *group) {}
+static void ksu_pkg_free_event(struct fsnotify_event *event) {}
+
+static const struct fsnotify_ops ksu_pkg_fsnotify_ops = {
+	.handle_event   = ksu_pkg_handle_event,
+	.free_group_priv = ksu_pkg_free_group_priv,
+	.free_event     = ksu_pkg_free_event,
 };
 
-static void __maybe_unused m_free(struct fsnotify_mark *m)
-{
-	if (m) {
-		kfree(m);
-	}
-}
+/* ── mark setup ─────────────────────────────────────────────────────────── */
+static struct fsnotify_mark ksu_pkg_mark;
 
-static int add_mark_on_inode(struct inode *inode, u32 mask,
-			     struct fsnotify_mark **out)
+static int ksu_pkg_add_watch(void)
 {
-	struct fsnotify_mark *m;
+	struct path path;
+	struct inode *inode;
 	int ret;
 
-	m = kzalloc(sizeof(*m), GFP_KERNEL);
-	if (!m)
-		return -ENOMEM;
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 18, 0)
-	fsnotify_init_mark(m, g);
-	m->mask = mask;
-	ret = fsnotify_add_inode_mark(m, inode, 0);
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0)
-	fsnotify_init_mark(m, g);
-	m->mask = mask;
-	ret = fsnotify_add_mark(m, inode, NULL, 0);
-#else
-	fsnotify_init_mark(m, m_free);
-	m->mask = mask;
-	ret = fsnotify_add_mark(m, g, inode, NULL, 0);
-#endif
-
+	ret = kern_path(PKG_LIST_PATH, LOOKUP_FOLLOW, &path);
 	if (ret) {
-		fsnotify_put_mark(m);
-		return -EINVAL;
-	}
-	*out = m;
-	return 0;
-}
-
-static int watch_one_dir(struct watch_dir *wd)
-{
-	int ret = kern_path(wd->path, LOOKUP_FOLLOW, &wd->kpath);
-	if (ret) {
-		pr_info("path not ready: %s (%d)\n", wd->path, ret);
+		/* /data may not be mounted yet at early boot — that's fine,
+		 * the watch will be installed on first ksu_observer_init()
+		 * call after /data is available. */
+		pr_info("kernelsu: pkg_observer: %s not found yet (ret=%d)\n",
+			PKG_LIST_PATH, ret);
 		return ret;
 	}
-	wd->inode = d_inode(wd->kpath.dentry);
-	ihold(wd->inode);
 
-	ret = add_mark_on_inode(wd->inode, wd->mask, &wd->mark);
-	if (ret) {
-		pr_err("Add mark failed for %s (%d)\n", wd->path, ret);
-		path_put(&wd->kpath);
-		iput(wd->inode);
-		wd->inode = NULL;
-		return ret;
-	}
-	pr_info("watching %s\n", wd->path);
-	return 0;
+	inode = d_inode(path.dentry);
+
+	fsnotify_init_mark(&ksu_pkg_mark, ksu_pkg_group);
+	ksu_pkg_mark.mask = FS_CLOSE_WRITE | FS_MOVED_TO | FS_MODIFY;
+
+	ret = fsnotify_add_mark(&ksu_pkg_mark, ksu_pkg_group,
+				inode, NULL, 0);
+	if (ret)
+		pr_warn("kernelsu: pkg_observer: fsnotify_add_mark failed: %d\n",
+			ret);
+	else
+		pr_info("kernelsu: pkg_observer: watching %s\n", PKG_LIST_PATH);
+
+	path_put(&path);
+	return ret;
 }
 
-static void unwatch_one_dir(struct watch_dir *wd)
-{
-	if (wd->mark) {
-		fsnotify_destroy_mark(wd->mark, g);
-		fsnotify_put_mark(wd->mark);
-		wd->mark = NULL;
-	}
-	if (wd->inode) {
-		iput(wd->inode);
-		wd->inode = NULL;
-	}
-	if (wd->kpath.dentry) {
-		path_put(&wd->kpath);
-		memset(&wd->kpath, 0, sizeof(wd->kpath));
-	}
-}
-
-static struct watch_dir g_watch = { .path = "/data/system",
-				    .mask = MASK_SYSTEM };
+/* ── public API ─────────────────────────────────────────────────────────── */
 
 int ksu_observer_init(void)
 {
-	int ret = 0;
+	int ret;
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0)
-	g = fsnotify_alloc_group(&ksu_ops, 0);
-#else
-	g = fsnotify_alloc_group(&ksu_ops);
-#endif
-	if (IS_ERR(g))
-		return PTR_ERR(g);
+	INIT_DELAYED_WORK(&ksu_pkg_work, ksu_pkg_refresh_work);
 
-	ret = watch_one_dir(&g_watch);
-	pr_info("observer init done\n");
+	ksu_pkg_group = fsnotify_alloc_group(&ksu_pkg_fsnotify_ops);
+	if (IS_ERR(ksu_pkg_group)) {
+		ret = PTR_ERR(ksu_pkg_group);
+		pr_err("kernelsu: pkg_observer: fsnotify_alloc_group failed: %d\n",
+		       ret);
+		ksu_pkg_group = NULL;
+		return ret;
+	}
+
+	ret = ksu_pkg_add_watch();
+	if (ret) {
+		/* Non-fatal: root still works, just no live refresh */
+		pr_warn("kernelsu: pkg_observer: running without live watch\n");
+	}
+
 	return 0;
 }
+EXPORT_SYMBOL(ksu_observer_init);
 
 void ksu_observer_exit(void)
 {
-	unwatch_one_dir(&g_watch);
-	fsnotify_put_group(g);
-	pr_info("observer exit done\n");
+	cancel_delayed_work_sync(&ksu_pkg_work);
+
+	if (ksu_pkg_group) {
+		fsnotify_destroy_mark(&ksu_pkg_mark, ksu_pkg_group);
+		fsnotify_put_group(ksu_pkg_group);
+		ksu_pkg_group = NULL;
+	}
+
+	pr_info("kernelsu: pkg_observer: exit\n");
 }
+EXPORT_SYMBOL(ksu_observer_exit);
