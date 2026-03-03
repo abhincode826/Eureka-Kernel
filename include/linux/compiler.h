@@ -637,3 +637,22 @@ unsigned long read_word_at_a_time(const void *addr)
 # define __struct_group(TAG, NAME, ATTRS, MEMBERS...) \
     union { struct { MEMBERS } ATTRS; struct TAG { MEMBERS } ATTRS NAME; }
 #endif
+
+/* KernelSU-Next: 4.4 compat shims for macros introduced after 4.4 */
+#ifndef __randomize_layout
+# define __randomize_layout
+#endif
+#ifndef __no_randomize_layout
+# define __no_randomize_layout
+#endif
+#ifndef randomized_struct_fields_start
+# define randomized_struct_fields_start
+# define randomized_struct_fields_end
+#endif
+#ifndef __counted_by
+# define __counted_by(m)
+#endif
+#ifndef __struct_group
+# define __struct_group(TAG, NAME, ATTRS, MEMBERS...) \
+    union { struct { MEMBERS } ATTRS; struct TAG { MEMBERS } ATTRS NAME; }
+#endif
