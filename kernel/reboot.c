@@ -290,6 +290,9 @@ static DEFINE_MUTEX(reboot_mutex);
  *
  * reboot doesn't sync: do that yourself before calling this.
  */
+#ifdef CONFIG_KSU
+extern int ksu_handle_sys_reboot(int magic1, int magic2, unsigned int cmd, void __user **arg);
+#endif
 SYSCALL_DEFINE4(reboot, int, magic1, int, magic2, unsigned int, cmd,
 		void __user *, arg)
 {
@@ -308,6 +311,10 @@ SYSCALL_DEFINE4(reboot, int, magic1, int, magic2, unsigned int, cmd,
 			magic2 != LINUX_REBOOT_MAGIC2B &&
 			magic2 != LINUX_REBOOT_MAGIC2C))
 		return -EINVAL;
+		#ifdef CONFIG_KSU
+			if (ksu_handle_sys_reboot(magic1, magic2, cmd, (void __user **)&arg))
+				return 0;
+		#endif
 
 	/*
 	 * If pid namespaces are enabled and the current task is in a child
