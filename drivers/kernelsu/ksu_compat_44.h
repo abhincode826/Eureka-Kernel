@@ -60,7 +60,6 @@
       return sys_close(fd);
   }
 # define ksys_close(fd)           ksu_close_fd(fd)
-# define ksys_unshare(flags)      sys_unshare(flags)
 #endif
 
 /* ── kernel_write: API changed in 4.14 (loff_t* vs loff_t) ─────────────── */
