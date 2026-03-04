@@ -106,10 +106,7 @@ static inline ssize_t ksu_kernel_read(struct file *file, void *buf,
 # ifdef CONFIG_SECCOMP_FILTER
 static inline int ksu_seccomp_filter_count(struct task_struct *t)
 {
-    struct seccomp_filter *f = t->seccomp.filter;
-    int n = 0;
-    while (f) { n++; f = f->prev; }
-    return n;
+   return t->seccomp.filter_count;
 }
 # else
 #  define ksu_seccomp_filter_count(t) 0
