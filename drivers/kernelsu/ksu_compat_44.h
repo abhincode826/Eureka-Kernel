@@ -37,8 +37,9 @@
 
 /* ── strncpy_from_user_nofault: introduced in 5.8 ───────────────────────── */
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 8, 0)
-# define strncpy_from_user_nofault(dst, src, size) \
-    strncpy_from_user((dst), (src), (size))
+    # define strncpy_from_user_nofault(dst, src, size) \
+        strncpy_from_user((dst), (src), (size))
+    # define KSU_OPTIONAL_STRNCPY
 # define copy_from_user_nofault(dst, src, size) \
     ({ int __ret = -EFAULT; \
        if (access_ok(VERIFY_READ, (src), (size))) \
