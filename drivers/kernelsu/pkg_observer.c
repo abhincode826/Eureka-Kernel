@@ -8,7 +8,7 @@
  *
  * Uses only standard kernel 4.4 APIs — no extra patches needed.
  */
-
+#include "allowlist.h"
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/fs.h>
