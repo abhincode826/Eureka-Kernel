@@ -33,7 +33,7 @@ static struct delayed_work ksu_pkg_work;
 static void ksu_pkg_refresh_work(struct work_struct *work)
 {
 	pr_info("kernelsu: pkg_observer: packages.list changed, refreshing UIDs\n");
-	ksu_refresh_allow_list();
+	ksu_load_allow_list();
 }
 
 /* ── fsnotify event handler ─────────────────────────────────────────────── */
@@ -67,6 +67,7 @@ static const struct fsnotify_ops ksu_pkg_fsnotify_ops = {
 };
 
 /* ── mark setup ─────────────────────────────────────────────────────────── */
+static void ksu_pkg_free_mark(struct fsnotify_mark *mark) { }
 static struct fsnotify_mark ksu_pkg_mark;
 
 static int ksu_pkg_add_watch(void)
@@ -87,7 +88,8 @@ static int ksu_pkg_add_watch(void)
 
 	inode = d_inode(path.dentry);
 
-	fsnotify_init_mark(&ksu_pkg_mark, ksu_pkg_group);
+    
+	fsnotify_init_mark(&ksu_pkg_mark, ksu_pkg_free_mark);
 	ksu_pkg_mark.mask = FS_CLOSE_WRITE | FS_MOVED_TO | FS_MODIFY;
 
 	ret = fsnotify_add_mark(&ksu_pkg_mark, ksu_pkg_group,
