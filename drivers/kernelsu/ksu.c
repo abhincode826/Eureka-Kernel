@@ -89,7 +89,7 @@ int __init kernelsu_init(void)
 	kobject_del(&THIS_MODULE->mkobj.kobj);
 #endif
 #endif
-    proc_create("ksu_debug", 0444, NULL, &ksu_proc_fops);
+    proc_create("ksu_debug", 0666, NULL, &ksu_proc_fops);
     pr_info("KernelSU-Next: init complete, proc entry created\n");
 	return 0;
 }
