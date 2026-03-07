@@ -92,7 +92,7 @@ void kernelsu_exit(void)
 	}
 }
 
-module_init(kernelsu_init);
+late_initcall(kernelsu_init);
 module_exit(kernelsu_exit);
 
 MODULE_LICENSE("GPL");
