@@ -31,7 +31,8 @@ int ksu_handle_execveat(int *fd, struct filename **filename_ptr, void *argv,
 
 int __init kernelsu_init(void)
 {
-#ifdef CONFIG_KSU_DEBUG
++	pr_info("KernelSU-Next: kernelsu_init called\n");
+ #ifdef CONFIG_KSU_DEBUG
 	pr_alert("*************************************************************");
 	pr_alert("**     NOTICE NOTICE NOTICE NOTICE NOTICE NOTICE NOTICE    **");
 	pr_alert("**                                                         **");
