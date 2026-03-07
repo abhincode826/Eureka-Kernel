@@ -1,3 +1,4 @@
+
 #include <linux/export.h>
 #include <linux/fs.h>
 #include <linux/kobject.h>
@@ -13,6 +14,26 @@
 #include "supercalls.h"
 #include "ksu.h"
 #include "file_wrapper.h"
+#include <linux/proc_fs.h>
+#include <linux/seq_file.h>
+
+static int ksu_proc_show(struct seq_file *m, void *v)
+{
+    seq_printf(m, "kernelsu_init_ran=1\n");
+    return 0;
+}
+
+static int ksu_proc_open(struct inode *inode, struct file *file)
+{
+    return single_open(file, ksu_proc_show, NULL);
+}
+
+static const struct file_operations ksu_proc_fops = {
+    .open    = ksu_proc_open,
+    .read    = seq_read,
+    .llseek  = seq_lseek,
+    .release = single_release,
+};
 
 struct cred* ksu_cred;
 
@@ -31,7 +52,7 @@ int ksu_handle_execveat(int *fd, struct filename **filename_ptr, void *argv,
 
 int __init kernelsu_init(void)
 {
-+	pr_info("KernelSU-Next: kernelsu_init called\n");
+	pr_info("KernelSU-Next: kernelsu_init called\n");
  #ifdef CONFIG_KSU_DEBUG
 	pr_alert("*************************************************************");
 	pr_alert("**     NOTICE NOTICE NOTICE NOTICE NOTICE NOTICE NOTICE    **");
@@ -68,6 +89,8 @@ int __init kernelsu_init(void)
 	kobject_del(&THIS_MODULE->mkobj.kobj);
 #endif
 #endif
+    proc_create("ksu_debug", 0444, NULL, &ksu_proc_fops);
+    pr_info("KernelSU-Next: init complete, proc entry created\n");
 	return 0;
 }
 
