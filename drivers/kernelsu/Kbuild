@@ -95,7 +95,10 @@ HAVE_KSU_HOOK ?= 1
 ifeq ($(CONFIG_KSU_KPROBES_HOOK), y)
 $(info -- KernelSU-Next: Hook mode: Kprobes)
 ccflags-y += -DKSU_KPROBES_HOOK
-# Let's make it 0, so it would pass.
+HAVE_KSU_HOOK := 0
+else ifeq ($(CONFIG_KPROBES), y)
+$(info -- KernelSU-Next: Hook mode: Kprobes (forced))
+ccflags-y += -DKSU_KPROBES_HOOK
 HAVE_KSU_HOOK := 0
 endif
 
