@@ -12,8 +12,6 @@
 #include "manager.h"
 #include "throne_tracker.h"
 #include "kernel_compat.h"
-#include <linux/workqueue.h>
-extern struct cred *ksu_cred;
 
 uid_t ksu_manager_appid = KSU_INVALID_APPID;
 
@@ -133,7 +131,7 @@ FILLDIR_RETURN_TYPE my_actor(struct dir_context *ctx, const char *name,
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
 			unsigned int hash = full_name_hash(dirpath, strlen(dirpath));
 #else
-			unsigned int hash = ksu_full_name_hash(NULL, dirpath, strlen(dirpath));
+			unsigned int hash = full_name_hash(NULL, dirpath, strlen(dirpath));
 #endif
 			list_for_each_entry (pos, &apk_path_hash_list, list) {
 				if (hash == pos->hash) {
@@ -333,22 +331,12 @@ out:
 	}
 }
 
-static void throne_tracker_delayed_work_fn(struct work_struct *work)
-{
-	pr_info("throne_tracker: delayed scan starting...\n");
-	const struct cred *old_cred = override_creds(ksu_cred);
-	track_throne(false);
-	revert_creds(old_cred);
-}
-static DECLARE_DELAYED_WORK(throne_tracker_delayed_work, throne_tracker_delayed_work_fn);
-
 void ksu_throne_tracker_init()
 {
-	pr_info("throne_tracker: scheduling delayed manager scan (60s)\n");
-	schedule_delayed_work(&throne_tracker_delayed_work, HZ * 60);
+	// nothing to do
 }
 
 void ksu_throne_tracker_exit()
 {
-	cancel_delayed_work_sync(&throne_tracker_delayed_work);
+	// nothing to do
 }

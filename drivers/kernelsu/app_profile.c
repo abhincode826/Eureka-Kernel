@@ -65,7 +65,7 @@ void setup_groups(struct root_profile *profile, struct cred *cred)
 			return;
 		}
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
-		KSU_GROUP_GID(group_info, i) = kgid;
+		group_info->gid[i] = kgid;
 #else
 		GROUP_AT(group_info, i) = kgid;
 #endif
@@ -245,7 +245,7 @@ void disable_seccomp(void)
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 9, 0) ||                          \
      defined(KSU_OPTIONAL_SECCOMP_FILTER_RELEASE))
 	memcpy(fake, current, sizeof(*fake));
-	atomic_set(&ksu_seccomp_filter_count(current), 0);
+	atomic_set(&current->seccomp.filter_count, 0);
 #endif
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 9, 0) &&                           \
      !defined(KSU_OPTIONAL_SECCOMP_FILTER_RELEASE))

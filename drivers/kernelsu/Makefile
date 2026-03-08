@@ -21,5 +21,4 @@ format:
 check-format:
 	find . \( -name "*.c" -o -name "*.h" \) -print0 | xargs -0 clang-format --dry-run --Werror
 
-# Keep a new line here!! Because someone may append
-ccflags-y += -include $(srctree)/drivers/kernelsu/ksu_compat_44.h
+# Keep a new line here!! Because someone may append config

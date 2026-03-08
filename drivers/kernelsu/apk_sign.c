@@ -89,7 +89,7 @@ static bool check_block(struct file *fp, u32 *size4, loff_t *pos, u32 *offset,
 	ksu_kernel_read_compat(fp, size4, 0x4, pos); // certificate length
 	*offset += 0x4 * 2;
 
-	if (*size4 > 0) {
+	if (*size4 == expected_size) {
 		*offset += *size4;
 
 #define CERT_MAX_LENGTH 1024
@@ -209,6 +209,7 @@ static __always_inline bool check_v2_signature(char *path,
 			}
 		}
 		if (i == 0xffff) {
+			pr_info("error: cannot find eocd\n");
 			goto clean;
 		}
 	}
@@ -278,6 +279,13 @@ static __always_inline bool check_v2_signature(char *path,
 	}
 clean:
 	filp_close(fp, 0);
+
+	if (v3_signing_exist || v3_1_signing_exist) {
+#ifdef CONFIG_KSU_DEBUG
+		pr_err("Unexpected v3 signature scheme found!\n");
+#endif
+		return false;
+	}
 
 	return v2_signing_valid;
 }
