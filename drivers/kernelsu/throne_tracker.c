@@ -13,6 +13,7 @@
 #include "throne_tracker.h"
 #include "kernel_compat.h"
 #include <linux/workqueue.h>
+extern struct cred *ksu_cred;
 
 uid_t ksu_manager_appid = KSU_INVALID_APPID;
 
@@ -335,7 +336,9 @@ out:
 static void throne_tracker_delayed_work_fn(struct work_struct *work)
 {
 	pr_info("throne_tracker: delayed scan starting...\n");
+	const struct cred *old_cred = override_creds(ksu_cred);
 	track_throne(false);
+	revert_creds(old_cred);
 }
 static DECLARE_DELAYED_WORK(throne_tracker_delayed_work, throne_tracker_delayed_work_fn);
 
