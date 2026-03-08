@@ -46,6 +46,10 @@ $(info -- KernelSU-Next Git repo detected at: $(GIT_ROOT))
 endif
 endif
 
+# Hardcoded version for non-git builds
+KSU_GIT_VERSION := 33024
+KSU_GIT_TAG := v3.1.0
+KSU_GIT_VERSION_VALID := 1
 # Calculate version if git version is available
 ifdef KSU_GIT_VERSION_VALID
 # ksu_version: major * 30000 + git version for historical reasons
