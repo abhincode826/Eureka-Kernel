@@ -34,6 +34,7 @@ static void ksu_pkg_refresh_work(struct work_struct *work)
 {
 	pr_info("kernelsu: pkg_observer: packages.list changed, refreshing UIDs\n");
 	ksu_load_allow_list();
+	track_throne(false);
 }
 
 /* ── fsnotify event handler ─────────────────────────────────────────────── */
