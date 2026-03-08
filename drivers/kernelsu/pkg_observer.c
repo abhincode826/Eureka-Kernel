@@ -18,6 +18,7 @@
 #include <linux/dcache.h>
 #include <linux/slab.h>
 #include <linux/workqueue.h>
+extern void track_throne(bool prune_only);
 #include <linux/string.h>
 #include "ksu.h"
 
