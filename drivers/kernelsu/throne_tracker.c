@@ -12,6 +12,7 @@
 #include "manager.h"
 #include "throne_tracker.h"
 #include "kernel_compat.h"
+#include <linux/workqueue.h>
 
 uid_t ksu_manager_appid = KSU_INVALID_APPID;
 
@@ -331,13 +332,20 @@ out:
 	}
 }
 
+static void throne_tracker_delayed_work_fn(struct work_struct *work)
+{
+	pr_info("throne_tracker: delayed scan starting...\n");
+	track_throne(false);
+}
+static DECLARE_DELAYED_WORK(throne_tracker_delayed_work, throne_tracker_delayed_work_fn);
+
 void ksu_throne_tracker_init()
 {
-	pr_info("throne_tracker: init, searching for manager...\n");
-	track_throne(false);
+	pr_info("throne_tracker: scheduling delayed manager scan (60s)\n");
+	schedule_delayed_work(&throne_tracker_delayed_work, HZ * 60);
 }
 
 void ksu_throne_tracker_exit()
 {
-	// nothing to do
+	cancel_delayed_work_sync(&throne_tracker_delayed_work);
 }
