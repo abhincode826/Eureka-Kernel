@@ -90,6 +90,10 @@ $(info -- KernelSU-Next Manager signature hash: $(KSU_NEXT_MANAGER_HASH))
 # RKSU: checks for available hook
 ## Logic flipped for HAVE_KSU_HOOK: 0 is success, 1 is failure
 HAVE_KSU_HOOK ?= 1
+# Force kprobes mode for kernel 4.4 Exynos7885
+ccflags-y += -DKSU_KPROBES_HOOK
+HAVE_KSU_HOOK := 0
+$(info -- KernelSU-Next: Hook mode: Kprobes (hardcoded))
 
 # Checks hooks state
 ifeq ($(CONFIG_KSU_KPROBES_HOOK), y)
