@@ -333,7 +333,8 @@ out:
 
 void ksu_throne_tracker_init()
 {
-	// nothing to do
+	pr_info("throne_tracker: init, searching for manager...\n");
+	track_throne(false);
 }
 
 void ksu_throne_tracker_exit()
