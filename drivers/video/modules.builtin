@@ -1,0 +1,8 @@
+kernel/drivers/video/backlight/lcd.ko
+kernel/drivers/video/backlight/backlight.ko
+kernel/drivers/video/fbdev/core/fb.ko
+kernel/drivers/video/fbdev/core/cfbfillrect.ko
+kernel/drivers/video/fbdev/core/cfbcopyarea.ko
+kernel/drivers/video/fbdev/core/cfbimgblt.ko
+kernel/drivers/video/fbdev/exynos/dpu_7885/panels/dpui.ko
+kernel/drivers/video/fbdev/exynos/dpu_7885/panels/mdnie_lite.ko

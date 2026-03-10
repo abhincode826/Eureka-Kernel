@@ -1,0 +1,2 @@
+kernel/kernel/configs.ko
+kernel/kernel/sched/cpufreq_schedutil.ko

@@ -1,0 +1,6 @@
+kernel/drivers/sensors/lsm6dsl_core.ko
+kernel/drivers/sensors/lsm6dsl_i2c.ko
+kernel/drivers/sensors/yas_mag_drv-yas539.ko
+kernel/drivers/sensors/yas_mag_kernel.ko
+kernel/drivers/sensors/stk3x3x.ko
+kernel/drivers/sensors/sx9360.ko
