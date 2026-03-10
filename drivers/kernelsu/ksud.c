@@ -661,6 +661,9 @@ static void do_stop_input_hook(struct work_struct *work)
 	unregister_kprobe(&input_event_kp);
 }
 #else
+static void do_stop_init_rc_hook(struct work_struct *work) {}
+static void do_stop_execve_hook(struct work_struct *work) {}
+static void do_stop_input_hook(struct work_struct *work) {}
 static int ksu_execve_ksud_common(const char __user *filename_user,
 				  struct user_arg_ptr *argv)
 {
