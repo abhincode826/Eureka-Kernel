@@ -2,3 +2,26 @@ toolchain
 out/*
 kernel_zip/*
 patches/*
+.config
+.config.old
+*.builtin
+modules.order
+include/generated/
+include/config/
+arch/arm64/include/generated/
+scripts/basic/
+scripts/kconfig/
+scripts/mod/
+scripts/dtc/
+scripts/genksyms/ .config
+.config.old
+*.builtin
+modules.order
+include/generated/
+include/config/
+arch/arm64/include/generated/
+scripts/basic/
+scripts/kconfig/
+scripts/mod/
+scripts/dtc/
+scripts/genksyms/
